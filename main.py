@@ -149,10 +149,7 @@ def listenAndSend(listenPort, sendPort):
     s.sendto(data, ('127.0.0.1', sendPort))
     numOfShm, idArray = getShmInfo(data)
     for i in range(numOfShm):
-        # compTaskWith(idArray[i], imageDetect, lineColor)
-        t = threading.Thread(target=compTaskWith(idArray[i], imageDetect),
-                             name="LoopThreadWith{}".format(idArray[i]))
-        # t = threading.Thread(target=compTaskWith, args=(idArray[i], imageDetect, lineColor))
+        t = threading.Thread(target=compTaskWith, args=(idArray[i], imageDetect))
         t.start()
 
 
