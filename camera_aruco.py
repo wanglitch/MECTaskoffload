@@ -18,7 +18,6 @@
 import socket
 import threading
 import time
-
 import numpy as np
 import cv2
 import cv2.aruco as aruco
@@ -299,19 +298,12 @@ def cameraAruco():
 
         # 3. 根據目標世界坐標判断是否有相撞风险
         warning, AIM, SPE = judgeWarning(targetsWorldPoint, target1Point, target2Point)
-        if warning == 1:
-            print("WarningInformation: " + str(warning) + "    第 " + str(AIM) + " 辆车需调速为 " + str(SPE)[0: 4])
         if warning == 0:
             print("WarningInformation: " + str(warning))
+        else:
+            print("WarningInformation: " + str(warning) + "    第 " + str(AIM) + " 辆车需调速为 " + str(SPE)[0: 4])
         # print('------------------------------')
         # print(time.time() - time_start)
-        '''
-        if ( cv2.waitKey(10) & 0xFF ) == ord('q'):
-            cap.release()
-            cv2.destroyAllWindows()
-        '''
-        # cap.release()
-        # cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':

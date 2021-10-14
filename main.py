@@ -11,7 +11,6 @@ from camera_aruco import detectTarget, judgeWarning, estimateCameraPose, paramet
 warning, AIM = 0, 0
 SPE = None
 
-
 # 进程间通信所用端口：5214
 
 
@@ -20,7 +19,7 @@ def cameraAruco():
     target1Point, target2Point = [], []
     mtx, dist, rMatrix, tvec, refMarkerArray, targetMarker = parameterPrepare()
 
-    # vc = cv2.VideoCapture("./vehicle4k.mp4")
+    # vc = cv2.VideoCapture("./vehicle.mp4")
     vc = cv2.VideoCapture(0)
     vc.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
     vc.set(cv2.CAP_PROP_FPS, 30)
@@ -61,16 +60,16 @@ def cameraAruco():
 
         # 3. 根據目標世界坐標判断是否有相撞风险
         warning, AIM, SPE = judgeWarning(targetsWorldPoint, target1Point, target2Point)
-        if warning == 1:
-            print("WarningInformation: " + str(warning) + "    第 " + str(AIM) + " 辆车需调速为 " + str(SPE)[0: 4])
         if warning == 0:
             print("WarningInformation: " + str(warning))
+        else:
+            print("WarningInformation: " + str(warning) + "    第 " + str(AIM) + " 辆车需调速为 " + str(SPE)[0: 4])
         # print('------------------------------')
         print(time.time() - time_start)
 
 
 def listenAndSend(listenPort, sendPort):
-    imageDetect = taskImageDetect.taskImageDetest()
+    imageDetect = taskImageDetect.TaskImageDetect()
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind(('127.0.0.1', listenPort))
     data, _ = s.recvfrom(1024)
@@ -114,7 +113,7 @@ def compTaskWith(ID, imageDealClass):
 def main():
     ThreadAruco = threading.Thread(target=cameraAruco, name="cameraAruco")
     ThreadLAndS = threading.Thread(target=listenAndSend, args=(5214, 5215), name="listenAndSend")
-    # ThreadAruco.start()
+    ThreadAruco.start()
     ThreadLAndS.start()
 
 

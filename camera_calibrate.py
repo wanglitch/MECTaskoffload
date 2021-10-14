@@ -11,7 +11,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 
-# ref: https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_calib3d/py_calibration/py_calibration.html
+# https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_calib3d/py_calibration/py_calibration.html
 
 # 8,6
 # def calibrate(cornerX=5, cornerY=8, squareSize=30.0, images=glob.glob('*.png')):
