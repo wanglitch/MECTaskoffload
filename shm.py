@@ -4,13 +4,25 @@ import time
 
 import sysv_ipc as ipc
 
-
 # byte 转 int
 # int 转 byte
 # |1:1:4:n|
 # |是否有任务:任务类型:任务长度:任务数据|
 
-## index:从0开始计数
+
+def getShmInfo(data):
+    dataStr = data.decode("utf-8")
+    data_split = dataStr.split("|:|:|")
+    numOfShm = data[0]
+    id_array = []
+    print(data)
+    for i in range(numOfShm):
+        id_array.append(int(data_split[i + 1]))
+    # print(id_array)
+    return numOfShm, id_array
+
+
+# index:从0开始计数
 def getByte(ID, index):
     shm = ipc.attach(id=ID)
     byte = shm.read(index + 1)[index]

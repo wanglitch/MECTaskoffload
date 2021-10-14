@@ -197,11 +197,11 @@ def judgeWarning(targetsWorldPoint, target1Point, target2Point):
                 else:
                     if T11 < T22 < T12:
                         # 1车减速，使2车通过
-                        spe = changeSpeed(D1, T22, carLength=0.5, carWidth=0.26, index=0.5, weightIndex=1.2)
+                        spe = changeSpeed(D1, T22, carLength=0.5, carWidth=0.32, index=0.5, weightIndex=1.2)
                         return 1, 1, spe
                     if T21 < T12 < T22:
                         # 2车减速，使1车通过
-                        spe = changeSpeed(D2, T12, carLength=0.5, carWidth=0.26, index=0.2, weightIndex=1.2)
+                        spe = changeSpeed(D2, T12, carLength=0.5, carWidth=0.32, index=0.2, weightIndex=1.2)
                         return 1, 2, spe
             else:
                 return 0, 0, None
@@ -215,16 +215,16 @@ def calculateTime(targetsWorldPoint, target1Point, target2Point):
     target2Point.append(targetsWorldPoint[1])
     D1, V1 = calculateDistanceAndV(target1Point, frameN=3)
     D2, V2 = calculateDistanceAndV(target2Point, frameN=3)
-    T11, T12 = calculateT(D1, V1, carLength=0.5, carWidth=0.26, index=0.5)
-    T21, T22 = calculateT(D2, V2, carLength=0.5, carWidth=0.26, index=0.2)
+    T11, T12 = calculateT(D1, V1, carLength=0.5, carWidth=0.32, index=0.5)
+    T21, T22 = calculateT(D2, V2, carLength=0.5, carWidth=0.32, index=0.2)
     # print(T11, T12, T21, T22)
     return D1, D2, T11, T12, T21, T22
 
 
 def calculateDistanceAndV(targetPoint, frameN):
     if len(targetPoint) >= frameN + 1:
-        Vx = abs(targetPoint[len(targetPoint) - 1][0] - targetPoint[len(targetPoint) - (frameN + 1)][0]) * 20 / frameN
-        Vy = abs(targetPoint[len(targetPoint) - 1][1] - targetPoint[len(targetPoint) - (frameN + 1)][1]) * 20 / frameN
+        Vx = abs(targetPoint[len(targetPoint) - 1][0] - targetPoint[len(targetPoint) - (frameN + 1)][0]) * 30 / frameN
+        Vy = abs(targetPoint[len(targetPoint) - 1][1] - targetPoint[len(targetPoint) - (frameN + 1)][1]) * 30 / frameN
         if Vx > Vy:
             distance = abs(targetPoint[len(targetPoint) - 1][0])
             V = Vx
@@ -250,13 +250,16 @@ def changeSpeed(distance, T, carLength, carWidth, index, weightIndex):
 
 
 def cameraAruco():
-    target1Point, target2Point = [], []
-
     global warning, AIM, SPE
+    target1Point, target2Point = [], []
     mtx, dist, rMatrix, tvec, refMarkerArray, targetMarker = parameterPrepare()
 
-    vc = cv2.VideoCapture("./vehicle726.MP4")
-    # vc = cv2.VideoCapture(0)
+    # vc = cv2.VideoCapture("./vehicle4k.mp4")
+    vc = cv2.VideoCapture(0)
+    vc.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+    vc.set(cv2.CAP_PROP_FPS, 30)
+    vc.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+    vc.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
     while True:
         # time_start = time.time()
 
@@ -276,7 +279,7 @@ def cameraAruco():
         img = frame.copy()
         aruco.drawDetectedMarkers(img, corners, ids)
         cv2.namedWindow('detect', cv2.WINDOW_NORMAL)
-        cv2.resizeWindow('detect', 450, 800)
+        cv2.resizeWindow('detect', 1280, 720)
         cv2.imshow("detect", img)
         cv2.waitKey(0)
 
