@@ -7,7 +7,7 @@ import sysv_ipc as ipc
 # byte 转 int
 # int 转 byte
 # |1:1:4:n|
-# |是否有任务:任务类型:任务长度:任务数据|
+# |发送任务小车:任务类型:任务长度:任务数据|
 
 
 def getShmInfo(data):

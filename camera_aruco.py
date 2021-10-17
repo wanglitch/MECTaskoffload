@@ -68,31 +68,19 @@ def estimateCameraPose(cameraMtx, dist, refMarkerArray, corners, markerIDs):
         markerIDs, detectMarkers()函數的輸出
     输出：旋转矩阵rMatrix, 平移向量tVecs
     """
-    marker_count = len(refMarkerArray)
-    if marker_count < 4:  # 标志板少于4个
-        raise RuntimeError('at least 3 pair of points required when invoking solvePnP')
-
-    corners = corners
     ids = markerIDs
-    # print('ids:\n')
-    # print(ids)
-    # print('corners:\n')
-    # print(corners)
-
     objectPoints, imagePoints = [], []
     # 检查是否探测到了所有预期的基准marker
     if len(ids) != 0:  # 檢測到了marker,存儲marker的世界坐標到objectPoints，構建對應的圖像平面坐標列表 imagePoints
         # print('------detected ref markers----')
         for i in range(len(ids)):  # 遍歷探測到的marker ID,
             if ids[i][0] in refMarkerArray:  # 如果是參考點的標志，提取基准点的图像坐标，用于构建solvePnP()的输入
-
                 # print('id:\n ' + str(ids[i][0]))
                 # print('cornors: \n ' + str(corners[i][0]))
                 objectPoints.append(refMarkerArray[ids[i][0]])
                 imagePoints.append(corners[i][0][0].tolist())  # 提取marker的左上點
         objectPoints = np.array(objectPoints)
         imagePoints = np.array(imagePoints)
-
         # print('------------------------------\n')
         # print('objectPoints:\n' + str(objectPoints))
         # print('imagePoints:\n' + str(imagePoints))
@@ -100,17 +88,14 @@ def estimateCameraPose(cameraMtx, dist, refMarkerArray, corners, markerIDs):
     else:
         return False, None, None
 
-    # 如果檢測到的基準參考點大於3個，可以解算相機的姿態啦
-    if len(objectPoints) >= 3:
+    # 如果檢測到的基準參考點大於4個，可以解算相機的姿態
+    if len(objectPoints) >= 4:
         # 至少需要3個點
         retval, rvec, tvec = cv2.solvePnP(objectPoints, imagePoints, cameraMtx, dist)
         rMatrix, jacobian = cv2.Rodrigues(rvec)
         return True, rMatrix, tvec
     else:
         return False, None, None
-
-    # 返回值
-    # return rMatrix=[], tVecs=[]
 
 
 def detectTarget(cameraMatrix, dist, rMatrix, tvec, targetMarker, corners, markerIDs):
@@ -155,6 +140,8 @@ def detectTarget(cameraMatrix, dist, rMatrix, tvec, targetMarker, corners, marke
         originWorldCoodinate = np.linalg.inv(rMatrix).dot((np.array([0, 0, 0.0]) - tvec.reshape(3)))
         # 兩點確定了一條直線 (x-x0)/(x0-x1) = (y-y0)/(y0-y1) = (z-z0)/(z0-z1)
         # 當z=0時,算得x,y
+    # 返回值
+    # return rMatrix=[], tVecs=[]
         delta = originWorldCoodinate - markerWorldCoodinate
 
         # 给定标识高度
@@ -177,31 +164,30 @@ def detectTarget(cameraMatrix, dist, rMatrix, tvec, targetMarker, corners, marke
 
 
 def judgeWarning(targetsWorldPoint, target1Point, target2Point):
-    if len(targetsWorldPoint) < 2:
-        print("检测到车辆少于2")
+    if targetsWorldPoint[0] is None or targetsWorldPoint[1] is None:
+        print("检测到车辆少于二，停止预警")
         return 0, 0, None
-    if abs(targetsWorldPoint[0][0]) < 8 and abs(targetsWorldPoint[0][1]) < 8 and abs(targetsWorldPoint[1][0]) < 8 and \
-            abs(targetsWorldPoint[1][1]) < 8:
-        if targetsWorldPoint[0][0] > 0.5 or targetsWorldPoint[0][1] > 0.5 or targetsWorldPoint[0][1] > 0.5 \
-                or targetsWorldPoint[0][1] > 0.5:
-            print("已过十字路口")
+    elif abs(targetsWorldPoint[0][0]) < 8 and abs(targetsWorldPoint[0][1]) < 8 and \
+            abs(targetsWorldPoint[1][0]) < 8 and abs(targetsWorldPoint[1][1]) < 8:
+        if targetsWorldPoint[0][0] > 0.6 or targetsWorldPoint[0][1] > 0.6 or targetsWorldPoint[0][1] > 0.6 \
+                or targetsWorldPoint[0][1] > 0.6:
+            print("已过十字路口，停止预警")
             return 0, 0, None
         else:
             D1, D2, T11, T12, T21, T22 = calculateTime(targetsWorldPoint, target1Point, target2Point)
             if T11 < 0 or T12 < 0 or T21 < 0 or T22 < 0:
                 return 0, 0, None
-            if abs(T11) < 10 and abs(T21) < 10:
-                if abs(T12) < abs(T21) or abs(T11) > abs(T22):
-                    return 0, 0, None
+            elif T11 < 10 and T21 < 10:
+                if T11 < T22 < T12:
+                    # 1车减速，使2车通过
+                    spe = changeSpeed(D1, T22, carLength=0.5, carWidth=0.32, index=0.5, weightIndex=1.2)
+                    return 1, 1, spe
+                elif T21 < T12 < T22:
+                    # 2车减速，使1车通过
+                    spe = changeSpeed(D2, T12, carLength=0.5, carWidth=0.32, index=0.2, weightIndex=1.2)
+                    return 1, 2, spe
                 else:
-                    if T11 < T22 < T12:
-                        # 1车减速，使2车通过
-                        spe = changeSpeed(D1, T22, carLength=0.5, carWidth=0.32, index=0.5, weightIndex=1.2)
-                        return 1, 1, spe
-                    if T21 < T12 < T22:
-                        # 2车减速，使1车通过
-                        spe = changeSpeed(D2, T12, carLength=0.5, carWidth=0.32, index=0.2, weightIndex=1.2)
-                        return 1, 2, spe
+                    return 0, 0, None
             else:
                 return 0, 0, None
     else:
@@ -246,66 +232,3 @@ def calculateT(distance, V, carLength, carWidth, index):
 def changeSpeed(distance, T, carLength, carWidth, index, weightIndex):
     SPeed = (distance - carLength * index - carWidth / 2) / T / weightIndex
     return SPeed
-
-
-def cameraAruco():
-    global warning, AIM, SPE
-    target1Point, target2Point = [], []
-    mtx, dist, rMatrix, tvec, refMarkerArray, targetMarker = parameterPrepare()
-
-    # vc = cv2.VideoCapture("./vehicle4k.mp4")
-    vc = cv2.VideoCapture(0)
-    vc.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
-    vc.set(cv2.CAP_PROP_FPS, 30)
-    vc.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-    vc.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-    while True:
-        # time_start = time.time()
-
-        ret1, frame = vc.read()
-        if ret1 == 0:
-            break
-
-        # 1. 估計camera pose
-        # 1.1 detect aruco markers
-        img_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
-        parameters = aruco.DetectorParameters_create()
-
-        corners, ids, rejectedImgPoints = aruco.detectMarkers(img_gray, aruco_dict, parameters=parameters)
-        # aruco.drawDetectedMarkers(img_gray, corners, ids)  # Draw A square around the markers
-
-        img = frame.copy()
-        aruco.drawDetectedMarkers(img, corners, ids)
-        cv2.namedWindow('detect', cv2.WINDOW_NORMAL)
-        cv2.resizeWindow('detect', 1280, 720)
-        cv2.imshow("detect", img)
-        cv2.waitKey(0)
-
-        # 1.2 estimate camera pose
-        gotCameraPose, rMatrixTemp, tvecTemp = estimateCameraPose(mtx, dist, refMarkerArray, corners, ids)
-
-        # 1.3 update R, T to static value
-        if gotCameraPose:
-            rMatrix = rMatrixTemp
-            tvec = tvecTemp
-            # print('rMatrix\n' + str(rMatrixTemp))
-            # print('tvec\n' + str(tvecTemp))
-
-        # 2. 根據目標的marker來計算世界坐標系坐標
-        targetsWorldPoint = detectTarget(mtx, dist, rMatrix, tvec, targetMarker, corners, ids)
-        # print(targetsWorldPoint)
-
-        # 3. 根據目標世界坐標判断是否有相撞风险
-        warning, AIM, SPE = judgeWarning(targetsWorldPoint, target1Point, target2Point)
-        if warning == 0:
-            print("WarningInformation: " + str(warning))
-        else:
-            print("WarningInformation: " + str(warning) + "    第 " + str(AIM) + " 辆车需调速为 " + str(SPE)[0: 4])
-        # print('------------------------------')
-        # print(time.time() - time_start)
-
-
-if __name__ == '__main__':
-    warning, AIM, SPE = 0, 0, None
-    cameraAruco()

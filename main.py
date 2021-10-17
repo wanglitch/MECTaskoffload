@@ -19,8 +19,8 @@ def cameraAruco():
     target1Point, target2Point = [], []
     mtx, dist, rMatrix, tvec, refMarkerArray, targetMarker = parameterPrepare()
 
-    # vc = cv2.VideoCapture("./vehicle.mp4")
-    vc = cv2.VideoCapture(0)
+    vc = cv2.VideoCapture("./vehicle4k.mp4")
+    # vc = cv2.VideoCapture(0)
     vc.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
     vc.set(cv2.CAP_PROP_FPS, 30)
     vc.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
@@ -65,7 +65,7 @@ def cameraAruco():
         else:
             print("WarningInformation: " + str(warning) + "    第 " + str(AIM) + " 辆车需调速为 " + str(SPE)[0: 4])
         # print('------------------------------')
-        print(time.time() - time_start)
+        print("TimeDelay: " + str(time.time() - time_start))
 
 
 def listenAndSend(listenPort, sendPort):
@@ -114,7 +114,7 @@ def main():
     ThreadAruco = threading.Thread(target=cameraAruco, name="cameraAruco")
     ThreadLAndS = threading.Thread(target=listenAndSend, args=(5214, 5215), name="listenAndSend")
     ThreadAruco.start()
-    ThreadLAndS.start()
+    # ThreadLAndS.start()
 
 
 if __name__ == '__main__':
