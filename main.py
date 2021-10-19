@@ -7,24 +7,24 @@ import cv2.aruco as aruco
 import shm
 import taskImageDetect
 from camera_aruco import detectTarget, judgeWarning, estimateCameraPose, parameterPrepare
+import multiprocessing
 
-warning, AIM = 0, 0
-SPE = None
+# warning, AIM, SPE = 0, 0, None
 
 # 进程间通信所用端口：5214
 
 
-def cameraAruco():
-    global warning, AIM, SPE
+def cameraAruco(warning, AIM, SPE):
+    # global warning, AIM, SPE
     target1Point, target2Point = [], []
     mtx, dist, rMatrix, tvec, refMarkerArray, targetMarker = parameterPrepare()
 
-    vc = cv2.VideoCapture("./vehicle4k.mp4")
-    # vc = cv2.VideoCapture(0)
+    # vc = cv2.VideoCapture("./vehicle4k.mp4")
+    vc = cv2.VideoCapture(0)
     vc.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
     vc.set(cv2.CAP_PROP_FPS, 30)
-    vc.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-    vc.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+    vc.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+    vc.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
     while True:
         time_start = time.time()
 
@@ -59,16 +59,17 @@ def cameraAruco():
         targetsWorldPoint = detectTarget(mtx, dist, rMatrix, tvec, targetMarker, corners, ids)
 
         # 3. 根據目標世界坐標判断是否有相撞风险
-        warning, AIM, SPE = judgeWarning(targetsWorldPoint, target1Point, target2Point)
-        if warning == 0:
-            print("WarningInformation: " + str(warning))
+        warning.value, AIM.value, SPE.value = judgeWarning(targetsWorldPoint, target1Point, target2Point)
+        if warning.value == 0:
+            print("WarningInformation: " + str(warning.value))
         else:
-            print("WarningInformation: " + str(warning) + "    第 " + str(AIM) + " 辆车需调速为 " + str(SPE)[0: 4])
-        # print('------------------------------')
+            print("WarningInformation: " + str(warning.value) + \
+                  "    第 " + str(AIM.value) + " 辆车需调速为 " + str(SPE.value)[0: 4])
         print("TimeDelay: " + str(time.time() - time_start))
+        print('------------------------------')
 
 
-def listenAndSend(listenPort, sendPort):
+def listenAndSend(listenPort, sendPort, warning, AIM, SPE):
     imageDetect = taskImageDetect.TaskImageDetect()
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind(('127.0.0.1', listenPort))
@@ -76,12 +77,12 @@ def listenAndSend(listenPort, sendPort):
     s.sendto(data, ('127.0.0.1', sendPort))
     numOfShm, idArray = shm.getShmInfo(data)
     for i in range(numOfShm):
-        t = threading.Thread(target=compTaskWith, args=(idArray[i], imageDetect))
+        t = threading.Thread(target=compTaskWith, args=(idArray[i], imageDetect, warning, AIM, SPE))
         t.start()
 
 
-def compTaskWith(ID, imageDealClass):
-    global warning, AIM, SPE
+def compTaskWith(ID, imageDealClass, warning, AIM, SPE):
+    # global warning, AIM, SPE
     while True:
         taskTarget, _, _, taskData = shm.getTheTaskIfThereIsOne(ID)
         if taskTarget == 1:
@@ -103,7 +104,7 @@ def compTaskWith(ID, imageDealClass):
         # print(out)
 
         # [24:32]human  [32:33]lineColor  [33:34]warning  [34:35]warningCarTarget  [35:39]suggestSpeed
-        calResult_str = "{}".format(out + lineColor + str(warning) + str(AIM) + str(SPE))
+        calResult_str = "{}".format(out + lineColor + str(warning.value) + str(AIM.value) + str(SPE.value)[0: 4])
         calResult_byte = calResult_str.encode('utf-8')
         # 组织计算结果
         return_data = calComplete.to_bytes(1, 'little') + len(calResult_byte).to_bytes(2, 'little') + calResult_byte
@@ -111,9 +112,16 @@ def compTaskWith(ID, imageDealClass):
 
 
 def main():
-    ThreadAruco = threading.Thread(target=cameraAruco, name="cameraAruco")
-    ThreadLAndS = threading.Thread(target=listenAndSend, args=(5214, 5215), name="listenAndSend")
-    ThreadAruco.start()
+    warning = multiprocessing.Value('h', 0)
+    AIM = multiprocessing.Value('h', 0)
+    SPE = multiprocessing.Value('d', -9.9)
+    p = multiprocessing.Process(target=cameraAruco, args=(warning, AIM, SPE), name="cameraAruco")
+    q = multiprocessing.Process(target=listenAndSend, args=(5214, 5215, warning, AIM, SPE), name="listenAndSend")
+    p.start()
+    q.start()
+    # ThreadAruco = threading.Thread(target=cameraAruco, name="cameraAruco")
+    # ThreadLAndS = threading.Thread(target=listenAndSend, args=(5214, 5215), name="listenAndSend")
+    # ThreadAruco.start()
     # ThreadLAndS.start()
 
 
