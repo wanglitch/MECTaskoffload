@@ -166,40 +166,40 @@ def detectTarget(cameraMatrix, dist, rMatrix, tvec, targetMarker, corners, marke
 def judgeWarning(targetsWorldPoint, target1Point, target2Point):
     if targetsWorldPoint[0] is None or targetsWorldPoint[1] is None:
         print("检测到车辆少于二，停止预警")
-        return 0, 0, -9.9
+        return '00-9.9'
     elif abs(targetsWorldPoint[0][0]) < 8 and abs(targetsWorldPoint[0][1]) < 8 and \
             abs(targetsWorldPoint[1][0]) < 8 and abs(targetsWorldPoint[1][1]) < 8:
         if targetsWorldPoint[0][0] > 0.6 or targetsWorldPoint[0][1] > 0.6 or targetsWorldPoint[0][1] > 0.6 \
                 or targetsWorldPoint[0][1] > 0.6:
             print("已过十字路口，停止预警")
-            return 0, 0, -9.9
+            return '00-9.9'
         else:
             D1, D2, T11, T12, T21, T22 = calculateTime(targetsWorldPoint, target1Point, target2Point)
             if T11 < 0 or T12 < 0 or T21 < 0 or T22 < 0:
-                return 0, 0, -9.9
+                return '00-9.9'
             elif T11 < 10 and T21 < 10:
                 if T11 < T22 < T12:
                     # 1车减速，使2车通过
                     spe = changeSpeed(D1, T22, carLength=0.5, carWidth=0.32, index=0.5, weightIndex=1.2)
-                    return 1, 1, spe
+                    return '11' + spe
                 elif T21 < T12 < T22:
                     # 2车减速，使1车通过
                     spe = changeSpeed(D2, T12, carLength=0.5, carWidth=0.32, index=0.2, weightIndex=1.2)
-                    return 1, 2, spe
+                    return '12' + spe
                 else:
-                    return 0, 0, -9.9
+                    return '00-9.9'
             else:
-                return 0, 0, -9.9
+                return '00-9.9'
     else:
         print("已超出预警范围")
-        return 0, 0, -9.9
+        return '00-9.9'
 
 
 def calculateTime(targetsWorldPoint, target1Point, target2Point):
     target1Point.append(targetsWorldPoint[0])
     target2Point.append(targetsWorldPoint[1])
-    D1, V1 = calculateDistanceAndV(target1Point, frameN=3, flag="x")
-    D2, V2 = calculateDistanceAndV(target2Point, frameN=3, flag="y")
+    D1, V1 = calculateDistanceAndV(target1Point, frameN=5, flag="x")
+    D2, V2 = calculateDistanceAndV(target2Point, frameN=5, flag="y")
     T11, T12 = calculateT(D1, V1, carLength=0.5, carWidth=0.32, index=0.5)
     T21, T22 = calculateT(D2, V2, carLength=0.5, carWidth=0.32, index=0.2)
     # print(D1, D2, T11, T12, T21, T22)
@@ -230,4 +230,4 @@ def calculateT(distance, V, carLength, carWidth, index):
 
 def changeSpeed(distance, T, carLength, carWidth, index, weightIndex):
     SPeed = (distance - carLength * index - carWidth / 2) / T / weightIndex
-    return SPeed
+    return str(SPeed)[0:4]
