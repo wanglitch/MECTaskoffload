@@ -23,6 +23,32 @@ import cv2
 import cv2.aruco as aruco
 
 
+# 实时获取最新帧，解决由于图像处理速度不够等原因造成帧堆积的问题
+class ThreadedCamera(object):
+    def __init__(self, source=0):
+        self.capture = cv2.VideoCapture(source)
+        self.capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+        self.capture.set(cv2.CAP_PROP_FPS, 30)
+        self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+
+        self.thread = threading.Thread(target=self.update, args=())
+        self.thread.daemon = True
+        self.thread.start()
+
+        self.status, self.frame = False, None
+
+    def update(self):
+        while True:
+            if self.capture.isOpened():
+                (self.status, self.frame) = self.capture.read()
+
+    def grab_frame(self):
+        if self.status:
+            return self.frame
+        return None
+
+
 def parameterPrepare():
     try:
         npzfile = np.load('./calibrateData920.npz')

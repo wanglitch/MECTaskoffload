@@ -7,7 +7,7 @@ import cv2
 import cv2.aruco as aruco
 import shm
 import taskImageDetect
-from camera_aruco import detectTarget, judgeWarning, estimateCameraPose, parameterPrepare
+from camera_aruco import detectTarget, judgeWarning, estimateCameraPose, parameterPrepare, ThreadedCamera
 import multiprocessing
 
 # 进程间通信所用端口：5214
@@ -18,53 +18,52 @@ def cameraAruco(warningInfo):
     mtx, dist, rMatrix, tvec, refMarkerArray, targetMarker = parameterPrepare()
 
     # vc = cv2.VideoCapture("./vehicle4k.mp4")
-    vc = cv2.VideoCapture(0)
-    vc.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
-    vc.set(cv2.CAP_PROP_FPS, 30)
-    vc.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-    vc.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+    vc = ThreadedCamera(0)
     while True:
         time_start = time.time()
 
-        ret1, frame = vc.read()
-        if ret1 == 0:
-            break
+        # ret1, frame = vc.read()
+        # if ret1 == 0:
+        #     break
 
-        # 1. 估計camera pose
-        # 1.1 detect aruco markers
-        img_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
-        parameters = aruco.DetectorParameters_create()
+        frame = vc.grab_frame()
+        if frame is not None:
 
-        corners, ids, rejectedImgPoints = aruco.detectMarkers(img_gray, aruco_dict, parameters=parameters)
+            # 1. 估計camera pose
+            # 1.1 detect aruco markers
+            img_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
+            parameters = aruco.DetectorParameters_create()
 
-        img = frame.copy()
-        aruco.drawDetectedMarkers(img, corners, ids)
-        cv2.namedWindow('detect', cv2.WINDOW_NORMAL)
-        cv2.resizeWindow('detect', 1280, 720)
-        cv2.imshow("detect", img)
-        cv2.waitKey(1)
+            corners, ids, rejectedImgPoints = aruco.detectMarkers(img_gray, aruco_dict, parameters=parameters)
 
-        # 1.2 estimate camera pose
-        gotCameraPose, rMatrixTemp, tvecTemp = estimateCameraPose(mtx, dist, refMarkerArray, corners, ids)
+            img = frame.copy()
+            aruco.drawDetectedMarkers(img, corners, ids)
+            cv2.namedWindow('detect', cv2.WINDOW_NORMAL)
+            cv2.resizeWindow('detect', 1280, 720)
+            cv2.imshow("detect", img)
+            cv2.waitKey(1)
 
-        # 1.3 update R, T to static value
-        if gotCameraPose:
-            rMatrix = rMatrixTemp
-            tvec = tvecTemp
+            # 1.2 estimate camera pose
+            gotCameraPose, rMatrixTemp, tvecTemp = estimateCameraPose(mtx, dist, refMarkerArray, corners, ids)
 
-        # 2. 根據目標的marker來計算世界坐標系坐標
-        targetsWorldPoint = detectTarget(mtx, dist, rMatrix, tvec, targetMarker, corners, ids)
+            # 1.3 update R, T to static value
+            if gotCameraPose:
+                rMatrix = rMatrixTemp
+                tvec = tvecTemp
 
-        # 3. 根據目標世界坐標判断是否有相撞风险
-        warningInfo.value = judgeWarning(targetsWorldPoint, target1Point, target2Point)
-        if warningInfo.value[0] == "0":
-            print("WarningInformation: " + warningInfo.value[0])
-        else:
-            print("WarningInformation: " + warningInfo.value[0] + \
-                  "    第 " + warningInfo.value[1] + " 辆车需调速为 " + warningInfo.value[2:])
-        print("TimeDelay: " + str(time.time() - time_start))
-        print('------------------------------')
+            # 2. 根據目標的marker來計算世界坐標系坐標
+            targetsWorldPoint = detectTarget(mtx, dist, rMatrix, tvec, targetMarker, corners, ids)
+
+            # 3. 根據目標世界坐標判断是否有相撞风险
+            warningInfo.value = judgeWarning(targetsWorldPoint, target1Point, target2Point)
+            if warningInfo.value[0] == "0":
+                print("WarningInformation: " + warningInfo.value[0])
+            else:
+                print("WarningInformation: " + warningInfo.value[0] + \
+                      "    第 " + warningInfo.value[1] + " 辆车需调速为 " + warningInfo.value[2:])
+            print("TimeDelay: " + str(time.time() - time_start))
+            print('------------------------------')
 
 
 def listenAndSend(listenPort, sendPort, warningInfo):
