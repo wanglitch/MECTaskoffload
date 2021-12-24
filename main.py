@@ -6,7 +6,7 @@ import time
 import cv2
 import cv2.aruco as aruco
 import shm
-import taskImageDetect
+from taskImageDetect import TaskImageDetect, getImgFromBytes
 from camera_aruco import detectTarget, judgeWarning, estimateCameraPose, parameterPrepare, ThreadedCamera
 import multiprocessing
 
@@ -67,7 +67,7 @@ def cameraAruco(warningInfo):
 
 
 def listenAndSend(listenPort, sendPort, warningInfo):
-    imageDetect = taskImageDetect.TaskImageDetect()
+    imageDetect = TaskImageDetect()
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind(('127.0.0.1', listenPort))
     data, _ = s.recvfrom(1024)
@@ -82,17 +82,20 @@ def listenAndSend(listenPort, sendPort, warningInfo):
 def compTaskWith(ID, imageDealClass, warningInfo):
     while True:
         taskTarget, _, _, taskData = shm.getTheTaskIfThereIsOne(ID)
-        if taskTarget == 1:
-            lineColor, calComplete = "0", 3
-        elif taskTarget == 2:
-            lineColor, calComplete = "2", 4
+        if 10 < taskTarget < 20:
+            calComplete = taskTarget - 10
+            # 偶数车走红线，奇数车走蓝线
+            if (taskTarget & 1) == 0:
+                lineColor = "0"
+            else:
+                lineColor = "2"
         else:
             lineColor, calComplete = "0", 0
 
-        # img = imageDealClass.getImgFromBytes(taskData)
-        # cv2.namedWindow(str(taskTarget), cv2.WINDOW_NORMAL)
-        # cv2.imshow(str(taskTarget), img)
-        # cv2.waitKey(1)
+        img = getImgFromBytes(taskData)
+        cv2.namedWindow(str(taskTarget), cv2.WINDOW_NORMAL)
+        cv2.imshow(str(taskTarget), img)
+        cv2.waitKey(1)
 
         # 计算任务
         # out = imageDealClass.getTheLightColor(taskData)  # getTheLightColor
@@ -110,7 +113,7 @@ def compTaskWith(ID, imageDealClass, warningInfo):
 
 def main():
     # warningInfo:  |warning:aim:speed| <=> |0:1:2~6|
-    warningInfo = multiprocessing.Manager().Value(ctypes.c_char_p, '"00-9.9"')
+    warningInfo = multiprocessing.Manager().Value(ctypes.c_char_p, '00-9.9')
     p = multiprocessing.Process(target=cameraAruco, args=(warningInfo,))
     q = multiprocessing.Process(target=listenAndSend, args=(5214, 5215, warningInfo,))
     p.start()

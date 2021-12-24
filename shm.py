@@ -37,10 +37,8 @@ def isaTaskWaitingToDeal(ID):
     #     return True
     # else:
     #     return False
-    if getByte(ID, 0) == 1:
+    if 10 < getByte(ID, 0) < 20:
         return 1
-    elif getByte(ID, 0) == 2:
-        return 2
     else:
         return -1
 
